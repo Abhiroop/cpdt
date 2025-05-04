@@ -103,6 +103,7 @@ Theorem compile_correct :
   Qed.
 
 
+(* Intrinsic typed compiler *)
 
 Inductive type : Set := Nat | Bool.
 
@@ -129,7 +130,7 @@ Definition tbinopDenote arg1 arg2 res (b : tbinop arg1 arg2 res)
   match b with
   | TPlus => plus
   | TTimes => mult
-  | TEq Nat => beq_nat
+  | TEq Nat => Nat.eqb
   | TEq Bool => eqb
   | TLt => leb
   end.
@@ -144,3 +145,88 @@ Fixpoint texpDenote t (e : texp t) : typeDenote t :=
 Eval simpl in texpDenote (TBinop TTimes (TBinop TPlus (TNConst 2) (TNConst 2))
                             (TNConst 7)).
 
+Definition tstack := list type.
+
+(* Indexed datatype
+   First tstack tells what is the shape of stack before op
+   Second tstack tells what is the shape of stack after op
+ *)
+Inductive tinstr : tstack   -> tstack -> Set :=
+| TiNConst : forall s, nat  -> tinstr s (Nat :: s)
+| TiBConst : forall s, bool -> tinstr s (Bool :: s)
+| TiBinop : forall arg1 arg2 res s,
+    tbinop arg1 arg2 res
+    -> tinstr (arg1 :: arg2 :: s) (res :: s).
+
+
+Inductive tprog : tstack -> tstack -> Set :=
+| TNil : forall s, tprog s s
+| TCons : forall s1 s2 s3,
+    tinstr s1 s2
+    -> tprog s2 s3
+    -> tprog s1 s3.
+
+Fixpoint vstack (ts : tstack) : Set :=
+  match ts with
+  | nil => unit
+  | t :: ts' => typeDenote t * vstack ts'
+  end%type.
+
+Definition tinstrDenote ts ts' (i : tinstr ts ts') : vstack ts -> vstack ts' :=
+  match i with
+  | TiNConst _ n => fun s => (n, s)
+  | TiBConst _ b => fun s => (b, s)
+  | TiBinop _ _ _ _ b => fun s =>
+                           let '(arg1, (arg2, s')) := s in
+                           ((tbinopDenote b) arg1 arg2, s')
+  end.
+
+Fixpoint tprogDenote ts ts' (p : tprog ts ts') : vstack ts -> vstack ts' :=
+  match p with
+  | TNil _ => fun s => s
+  | TCons _ _ _ i p' => fun s => tprogDenote p' (tinstrDenote i s)
+  end.
+
+Fixpoint tconcat ts ts' ts'' (p : tprog ts ts') : tprog ts' ts'' -> tprog ts ts'' :=
+  match p with
+  | TNil _ => fun p' => p'
+  | TCons _ _ _ i p1 => fun p' => TCons i (tconcat p1 p')
+  end.
+
+Fixpoint tcompile t (e : texp t) (ts : tstack) : tprog ts (t :: ts) :=
+  match e with
+  | TNConst n => TCons (TiNConst _ n) (TNil _)
+  | TBConst b => TCons (TiBConst _ b) (TNil _)
+  | TBinop _ _ _ b e1 e2 => tconcat (tcompile e2 _)
+                              (tconcat (tcompile e1 _) (TCons (TiBinop _ b) (TNil _)))
+  end.
+
+Lemma tconcat_correct : forall ts ts' ts'' (p : tprog ts ts') (p' : tprog ts' ts'')
+                               (s : vstack ts),
+    tprogDenote (tconcat p p') s
+    = tprogDenote p' (tprogDenote p s).
+  induction p; crush.
+Qed.
+
+Hint Rewrite tconcat_correct.
+
+Lemma tcompile_correct' : forall t (e : texp t) ts (s : vstack ts),
+    tprogDenote (tcompile e ts) s = (texpDenote e, s).
+  induction e; crush.
+Qed.
+
+Hint Rewrite tcompile_correct'.
+
+
+Theorem tcompile_correct : forall t (e : texp t),
+    tprogDenote (tcompile e nil) tt = (texpDenote e, tt).
+  crush.
+Qed.
+
+Require Extraction.
+Extraction Language Haskell.
+Extraction tcompile.
+
+
+Theorem tcompile_correct : forall t (e : texp t),
+    tprogDenote (tcompile e nil) tt = (texpDenote e, tt).
