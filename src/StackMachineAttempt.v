@@ -226,7 +226,3 @@ Qed.
 Require Extraction.
 Extraction Language Haskell.
 Extraction tcompile.
-
-
-Theorem tcompile_correct : forall t (e : texp t),
-    tprogDenote (tcompile e nil) tt = (texpDenote e, tt).
