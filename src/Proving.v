@@ -91,4 +91,22 @@ Instance C_One : Container One :=
     from  := from_One;
     to_from := to_from_One;
     from_to := from_to_One
-  }
+  }.
+
+(* Coq support multiple typeclass instances with different names *)
+
+Section Free.
+  Variable F : Type -> Type.
+
+  Inductive Free (C : Container F) A :=
+  | pure : A -> Free C A
+  | impure : Ext Shape Pos (Free C A) -> Free C A.
+
+  (* ext : forall s, (Pos s -> A) -> Ext Shape Pos A
+                               ^
+                               |
+                           (Free C A)
+    placed in strictly positive position
+  *)
+
+End Free.
