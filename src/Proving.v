@@ -1,3 +1,4 @@
+Require Import Bool Arith List Cpdt.CpdtTactics.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Program.Equality.
 
@@ -45,3 +46,7 @@ Definition to_One (A : Type) (ext : Ext_One A) : One A := tt.
 
 Definition from_One (A : Type) (z : One A) : Ext_One A :=
   ext tt (fun (p : Pos_One _) => match p with end).
+
+Lemma to_from__One : forall A (ox : One A), to_One (from_One ox) = ox.
+  crush.
+Qed.
