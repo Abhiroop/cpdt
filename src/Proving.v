@@ -93,7 +93,7 @@ Instance C_One : Container One :=
     from_to := from_to_One
   }.
 
-(* Coq support multiple typeclass instances with different names *)
+(* Coq supports multiple typeclass instances with different names *)
 
 Section Free.
   Variable F : Type -> Type.
@@ -110,3 +110,22 @@ Section Free.
   *)
 
 End Free.
+
+Arguments pure {_} {_} {_} _.
+
+Section MonadClass.
+
+  Class Monad (M: Type -> Type) :=
+    {
+      ret : forall A, A -> M A;
+      bind : forall A B, M A -> (A -> M B) -> M B;
+      left_unit : forall A B (x0: A) (f: A -> M B),
+        bind (ret x0) f = f x0;
+      right_unit : forall A (ma: M A), bind ma (@ret A) = ma;
+      bind_assoc: forall A B C (ma : M A) (f: A -> M B) (g: B -> M C),
+        bind ma (fun y => bind (f y) g) = bind (bind ma f) g
+    }.
+
+  Definition join (M: Type -> Type)  A (mmx : M (M A)) : M A := bind _ mmx (fun x => x).
+
+End MonadClass.
