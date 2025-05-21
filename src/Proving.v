@@ -6,6 +6,7 @@ Fail Inductive List M A :=
 | nil : List M A
 | cons : M A -> M (List M A) -> List M A.
 
+
 Fail Inductive NonStrictlyPos := con : (NonStrictlyPos -> nat) -> NonStrictlyPos.
 
 Fail Inductive Mu A := mu : (Mu A -> A) -> Mu A.
@@ -73,6 +74,7 @@ Lemma from_to_One : forall A (e : Ext_One A), from_One (to_One e) = e.
   destruct p.
 Qed.
 
+
 Class Container F :=
   {
     Shape : Type;
@@ -126,6 +128,24 @@ Section MonadClass.
         bind ma (fun y => bind (f y) g) = bind (bind ma f) g
     }.
 
-  Definition join (M: Type -> Type)  A (mmx : M (M A)) : M A := bind _ mmx (fun x => x).
+  Definition join (M: Type -> Type) `(Monad M) A (mmx : M (M A)) : M A := bind _ mmx (fun x => x).
+
+(* The `(Monad M) is like a typeclass constraint.
+   Basically we are saying
+   join :: (Monad m) => .....
+ *)
 
 End MonadClass.
+Arguments join {_} {_} {_}.
+
+Section MonadInstance.
+
+  Variable F : Type -> Type.
+  Variable C : Container F.
+
+  Definition cmap A B (f : A -> B) (x : Ext Shape Pos A) : Ext Shape Pos B :=
+    match x with
+    | ext s pf =>  ext s (fun x => f (pf x))
+    end.
+
+End MonadInstance.
