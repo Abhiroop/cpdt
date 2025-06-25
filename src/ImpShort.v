@@ -1,4 +1,8 @@
 From Coq Require Import Strings.String.
+From Coq Require Import Bool.Bool.
+From Coq Require Import Init.Nat.
+From Coq Require Import Arith.Arith.
+From Coq Require Import Arith.EqNat. Import Nat.
 
 Require Import Maps Imp.
 
@@ -66,3 +70,51 @@ Fixpoint aeval (m : mem) (a : aexp) : nat :=
   end.
 
 Eval compute in (aeval mem_ex2 <{ X * Y }>).
+
+
+(* ----------------------------------------------------------------- *)
+(** *** Boolean expression interpreter *)
+
+Fixpoint beval (m : mem) (b : bexp) : bool :=
+  match b with
+  | <{true}>      => true
+  | <{false}>     => false
+  | <{a1 = a2}>   => (aeval m a1) =? (aeval m a2)
+  | <{a1 <> a2}>  => negb ((aeval m a1) =? (aeval m a2))
+  | <{a1 <= a2}>  => (aeval m a1) <=? (aeval m a2)
+  | <{a1 > a2}>   => negb ((aeval m a1) <=? (aeval m a2))
+  | <{~ b1}>      => negb (beval m b1)
+  | <{b1 && b2}>  => andb (beval m b1) (beval m b2)
+  end.
+
+(* ================================================================= *)
+
+
+Inductive ceval : com -> mem -> mem -> Prop :=
+| E_Skip : forall st,
+    st =[ skip ]=> st
+| E_Asgn  : forall st a n x,
+    aeval st a = n ->
+    st =[ x := a ]=> (x !-> n ; st)
+| E_Seq : forall c1 c2 st st' st'',
+    st  =[ c1 ]=> st'  ->
+    st' =[ c2 ]=> st'' ->
+    st  =[ c1 ; c2 ]=> st''
+| E_IfTrue : forall st st' b c1 c2,
+    beval st b = true ->
+    st =[ c1 ]=> st' ->
+    st =[ if b then c1 else c2 end]=> st'
+| E_IfFalse : forall st st' b c1 c2,
+    beval st b = false ->
+    st =[ c2 ]=> st' ->
+    st =[ if b then c1 else c2 end]=> st'
+| E_WhileFalse : forall b st c,
+    beval st b = false ->
+    st =[ while b do c end ]=> st
+| E_WhileTrue : forall st st' st'' b c,
+    beval st b = true ->
+    st  =[ c ]=> st' ->
+    st' =[ while b do c end ]=> st'' ->
+    st  =[ while b do c end ]=> st''
+
+where "st =[ c ]=> st'" := (ceval c st st').
