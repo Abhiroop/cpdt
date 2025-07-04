@@ -36,9 +36,9 @@ Definition aop_sem (op : aop) :=
 
 Reserved Notation "⟦ a '⟧a'".
 Fixpoint repr_aexp (a : aexp) : itree MemE val :=
-  let aop op a b :=
-    a <- ⟦ a ⟧a;;        (* We simply bind recursive calls *)
-    b <- ⟦ b ⟧a;;
+  let aop op opl opr :=
+    a <- ⟦ opl ⟧a;;        (* We simply bind recursive calls *)
+    b <- ⟦ opr ⟧a;;
     Ret (aop_sem op a b)
   in
   match a with
@@ -127,8 +127,8 @@ Fixpoint repr_com (c : com) : itree MemE unit :=
       repeat (                   (* <== NOTE: use of _repeat_ *)
 	  x <- ⟦b⟧b;;
 	  if x
-	  then ⟦c⟧;; Ret (inl tt)
-	  else Ret (inr tt)
+	  then ⟦c⟧;; Ret (inl tt) (* inl - go back to the loop*)
+	  else Ret (inr tt)      (* inr - we are done*)
 	)
   end
 where "⟦ c ⟧" := (repr_com c)
